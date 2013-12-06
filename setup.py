@@ -20,7 +20,6 @@ setup(
         packages = find_packages(),
         include_dirs = [np.get_include()],
         ext_modules = ext_modules,
-        install_requires=['cython==0.19', 'numpy', 'scikit-image'],
-        test_requires=['pytest'],
+        install_requires=['cython', 'numpy', 'PIL'],
         package_data={'': ['*.png']}
         )

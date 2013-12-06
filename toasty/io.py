@@ -1,4 +1,4 @@
-from skimage.io import imsave, imread
+from PIL import Image
 import numpy as np
 
 
@@ -13,7 +13,7 @@ def save_png(pth, array):
     array : array-like
        Image to save
     """
-    imsave(pth, array)
+    Image.fromarray(array).save(path)
 
 
 def read_png(pth):
@@ -25,4 +25,4 @@ def read_png(pth):
     pth : str
        Path to write read
     """
-    return np.asarray(imread(pth))
+    return np.asarray(Image.open(pth))
