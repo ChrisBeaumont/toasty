@@ -1,0 +1,15 @@
+language: python
+python:
+  - 2.7
+
+install:
+  - pip install conda
+  - conda install scikit-image numpy cython astropy
+  - pip install --use-mirrors pytest coveralls pytest-cov
+  - python setup.py build
+
+script:
+  - py.test --cov toasty toasty
+
+after_success:
+  - coveralls

@@ -1,1 +1,3 @@
-from tile import healpix_sampler, normalizer, toast, build_tiles
+from tile import (toast, iter_tiles,
+                  healpix_sampler, cartesian_sampler,
+                  normalizer)

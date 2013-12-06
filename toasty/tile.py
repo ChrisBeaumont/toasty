@@ -29,7 +29,7 @@ def _div4(n, x, y, c, increasing):
             (n + 1, 2 * x + 1, 2 * y + 1, (ce, ri, lr, bo), increasing)]
 
 
-def build_tiles(data_sampler, depth):
+def iter_tiles(data_sampler, depth):
     """
     Create a hierarchy of toast tiles
 
@@ -57,7 +57,6 @@ def build_tiles(data_sampler, depth):
 
     while len(todo):
         n, x, y, c, increasing = todo.pop()
-        assert n <= depth
 
         pth = os.path.join('%i' % n, '%i' % y, '%i_%i.png' % (y, x))
 
@@ -65,7 +64,9 @@ def build_tiles(data_sampler, depth):
         img = data_sampler(l, b)
         if n == 1:
             lev1[(x, y)] = img
-        yield pth, img
+
+        if depth != 0:
+            yield pth, img
 
         if n < depth:
             todo .extend(_div4(n, x, y, c, increasing))
@@ -94,7 +95,7 @@ def toast(data_sampler, depth, base_dir):
       The path to create the files at
     """
 
-    for pth, tile in build_tiles(data_sampler, depth):
+    for pth, tile in iter_tiles(data_sampler, depth):
         print pth
         pth = os.path.join(base_dir, pth)
         direc, _ = os.path.split(pth)
@@ -179,6 +180,35 @@ def healpix_sampler(data, nest=False, coord = 'C', interpolation='nearest'):
             return get_interp_val(data, theta, phi, nest=nest)
 
         return data[ang2pix(nside, theta, phi, nest=nest)]
+
+    return vec2pix
+
+
+def cartesian_sampler(data):
+    """Return a sampler function for a dataset in the cartesian projection
+
+    The image is assumed to be oriented with longitude increasing to the left,
+    with (l,b) = (0,0) at the center pixel
+
+    Parameters
+    ----------
+    data : array-like
+      The map to sample
+    """
+    data = np.asarray(data)
+    ny, nx = data.shape[0:2]
+
+    if ny * 2 != nx:
+        raise ValueError("Map must be twice as wide as it is tall")
+
+    def vec2pix(l, b):
+        l = l % (2 * np.pi)
+        l[l < 0] += 2 * np.pi
+        l = nx * (1 - l / (2 * np.pi))
+        l = np.clip(l.astype(np.int), 0, nx - 1)
+        b = ny * (1 - (b + np.pi/2) / np.pi)
+        b = np.clip(b.astype(np.int), 0, ny - 1)
+        return data[b, l]
 
     return vec2pix
 
