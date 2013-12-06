@@ -34,7 +34,7 @@ cdef _mid(Point a, Point b, Point *cen):
 
 
 def mid(a, b):
-    cdef Point l(a[0], a[1]), m(b[0], b[1]), n
+    cdef Point l = Point(a[0], a[1]), m = Point(b[0], b[1]), n
     _mid(l, m, &n)
     return n.x, n.y
 
@@ -51,12 +51,14 @@ cdef _subsample(Point ul, Point ur, Point lr, Point ll,
     Parameters
     ----------
     ul, ur, lr, ll: Points
-        The (lon, lat) coordinates of the four corners of the toast tile to subdivide. In radians
+        The (lon, lat) coordinates of the four corners of the toast
+        tile to subdivide. In radians
     x, y : ndarray
         The arrays in which to hold the subdivided locations
     increasing : int
-    If 1, the shared edge of the toast tile's two sub-HTM trixels increases
-    from left to right. Otherwise, it decreases from left to right
+         If 1, the shared edge of the toast tile's two sub-HTM
+         trixels increases from left to right. Otherwise, it
+         decreases from left to right
     """
 
     cdef Point le, up, lo, ri, cen
@@ -77,24 +79,26 @@ cdef _subsample(Point ul, Point ur, Point lr, Point ll,
         y[...] = cen.y
         return
 
-        _subsample(ul, up, cen, le, x[:n/2, :n/2], y[:n/2, :n/2], increasing)
-        _subsample(up, ur, ri, cen, x[:n/2, n/2:], y[:n/2, n/2:], increasing)
-        _subsample(le, cen, lo, ll, x[n/2:, :n/2], y[n/2:, :n/2], increasing)
-        _subsample(cen, ri, lr, lo, x[n/2:, n/2:], y[n/2:, n/2:], increasing)
+    _subsample(ul, up, cen, le, x[:n/2, :n/2], y[:n/2, :n/2], increasing)
+    _subsample(up, ur, ri, cen, x[:n/2, n/2:], y[:n/2, n/2:], increasing)
+    _subsample(le, cen, lo, ll, x[n/2:, :n/2], y[n/2:, :n/2], increasing)
+    _subsample(cen, ri, lr, lo, x[n/2:, n/2:], y[n/2:, n/2:], increasing)
 
 
-def subsample(ul, ur, lr, ll, subsample, increasing):
+def subsample(ul, ur, lr, ll, npix, increasing):
     """Subdivide a toast quad, and return the pixel locations
 
     Parameters
     ----------
     ul, ur, lr, ll : array-like
-        Two-element arrays giving the (lon, lat) position of each corner of the toast tile, in radians
-    subsamle: int
+        Two-element arrays giving the (lon, lat) position of each corner
+        of the toast tile, in radians
+    npix: int
         The pixel resolution of the subsampled image. Must be a power of 2
     increasing: bool
-        Whether the two HTM trixels that define this toast tile are joined along the diagonal which increases
-        from left to right
+        Whether the two HTM trixels that define this toast tile are joined
+        along the diagonal which increases from left to right
+
 
     Returns
     --------
@@ -102,14 +106,14 @@ def subsample(ul, ur, lr, ll, subsample, increasing):
     """
     if len(ul) != 2 or len(ur) != 2 or len(lr) != 2 or len(ll) != 2:
         raise ValueError("Toast corners must be two-element arrays")
-    if 2 ** np.log(subsample, 2).astype(np.int) != subsample:
-        raise ValueError("subsample must be a power of 2: %i" % subsample)
+    if 2 ** int(np.log2(npix)) != npix:
+        raise ValueError("npix must be a power of 2: %i" % npix)
 
     cdef Point _ul, _ur, _lr, _ll
     cdef int _inc = (1 if increasing else 0)
 
-    x = np.zeros((subsample, subsample), dtype=float)
-    y = np.zeros((subsample, subsample), dtype=float)
+    x = np.zeros((npix, npix), dtype=DTYPE)
+    y = np.zeros((npix, npix), dtype=DTYPE)
 
     _ul = Point(DTYPE(ul[0]), DTYPE(ul[1]))
     _ur = Point(DTYPE(ur[0]), DTYPE(ur[1]))
