@@ -184,7 +184,9 @@ def _guess_healpix(pth, extension=None):
         extension = _find_extension(f)
 
     data, hdr = f[extension].data, f[extension].header
+    # grab the first healpix parameter
     data = data[data.dtype.names[0]]
+
     nest = hdr.get('ORDERING') == 'NESTED'
     coord = hdr.get('COORDSYS', 'C')
 
