@@ -6,13 +6,14 @@ from tempfile import mkstemp, mkdtemp
 from shutil import rmtree
 
 import pytest
-from astropy.io import fits
 import numpy as np
+
 try:
     import healpy as hp
-    HAS_HEALPY = True
+    from astropy.io import fits
+    HAS_ASTRO = True
 except ImportError:
-    HAS_HEALPY = False
+    HAS_ASTRO = False
 
 from .. import tile
 from .. import iter_tiles, cartesian_sampler, gen_wtml, toast, healpix_sampler
@@ -96,7 +97,7 @@ def test_wwt_compare_sky():
         image_test(expected, result, "Failed for %s" % pth)
 
 
-@pytest.mark.skipif('not HAS_HEALPY')
+@pytest.mark.skipif('not HAS_ASTRO')
 def test_healpix_sampler():
 
     direc = cwd()
@@ -112,7 +113,7 @@ def test_healpix_sampler():
         image_test(expected, result, "Failed for %s" % pth)
 
 
-@pytest.mark.skipif('not HAS_HEALPY')
+@pytest.mark.skipif('not HAS_ASTRO')
 def test_guess_healpix():
     pth = os.path.join(cwd(), 'test.hpx')
     d, nest, coord = tile._guess_healpix(pth)

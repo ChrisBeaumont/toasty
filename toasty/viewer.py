@@ -5,19 +5,29 @@ tile pyramid
 import os
 import sys
 from time import time
-from SimpleHTTPServer import SimpleHTTPRequestHandler, test
-from cStringIO import StringIO
+try:
+    from SimpleHTTPServer import SimpleHTTPRequestHandler, test
+    from cStringIO import StringIO
+except:  # python 3.X
+    from http.server import SimpleHTTPRequestHandler, test
+    from io import BytesIO
 
 from . import gen_wtml
 
 
 class SimpleWWTHandler(SimpleHTTPRequestHandler):
 
+    def serve_string(self, contents):
+        if sys.version_info.major == 2:
+            return StringIO(contents)
+
+        return BytesIO(contents.encode('UTF-8'))
+
     @property
     def wtml(self):
         if not hasattr(self, '_wtml'):
             base_dir = sys.argv[-1]
-            depths = os.walk(base_dir).next()[1]
+            depths = next(os.walk(base_dir))[1]
             max_depth = max(map(int, depths))
             self._wtml = gen_wtml(base_dir, max_depth)
         return self._wtml
@@ -30,7 +40,8 @@ class SimpleWWTHandler(SimpleHTTPRequestHandler):
             self.send_header("Last-Modified",
                              self.date_time_string(int(time())))
             self.end_headers()
-            return StringIO(self.wtml)
+            return self.serve_string(self.wtml)
+
         if self.path in ['/', '/index.html']:
             self.send_response(200)
             self.send_header("Content-type", 'text/html')
@@ -38,7 +49,8 @@ class SimpleWWTHandler(SimpleHTTPRequestHandler):
             self.send_header("Last-Modified",
                              self.date_time_string(int(time())))
             self.end_headers()
-            return StringIO(html)
+            return self.serve_string(html)
+
         return SimpleHTTPRequestHandler.send_head(self)
 
 
@@ -112,4 +124,5 @@ function set_layers() {
 """
 
 if __name__ == "__main__":
+    sys.argv.insert(1, '8000')
     test(HandlerClass=SimpleWWTHandler)
