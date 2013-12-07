@@ -41,11 +41,10 @@ To quickly preview a toast directory named `test`, navigate to the directory
 where `test` exists and run
 
 ```
-python -m toasty.view base_directory toasty.view
+python -m toasty.view test
 ```
 
 This will start a web server, probably at [http://0.0.0.0:8000](http://0.0.0:8000) (check the output for the actual address). Open this URL in a browser to get a quick look at the data.
 
 For more information about using WorldWide Telescope with custom image data,
 see [the official documentation](http://www.worldwidetelescope.org/Docs/worldwidetelescopedatafilesreference.html). The function `toasty.gen_wtml` can generate the wtml information for images generated with toasty.
-
