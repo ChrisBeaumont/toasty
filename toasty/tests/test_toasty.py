@@ -8,7 +8,11 @@ from shutil import rmtree
 import pytest
 from astropy.io import fits
 import numpy as np
-import healpy as hp
+try:
+    import healpy as hp
+    HAS_HEALPY = True
+except ImportError:
+    HAS_HEALPY = False
 
 from .. import tile
 from .. import iter_tiles, cartesian_sampler, gen_wtml, toast, healpix_sampler
@@ -92,6 +96,7 @@ def test_wwt_compare_sky():
         image_test(expected, result, "Failed for %s" % pth)
 
 
+@pytest.mark.skipif('not HAS_HEALPY')
 def test_healpix_sampler():
 
     direc = cwd()
@@ -107,6 +112,7 @@ def test_healpix_sampler():
         image_test(expected, result, "Failed for %s" % pth)
 
 
+@pytest.mark.skipif('not HAS_HEALPY')
 def test_guess_healpix():
     pth = os.path.join(cwd(), 'test.hpx')
     d, nest, coord = tile._guess_healpix(pth)
