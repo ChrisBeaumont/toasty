@@ -13,6 +13,7 @@ before_install:
 install:
   - conda install --yes pip numpy cython astropy setuptools
   - pip install --use-mirrors pytest coveralls pytest-cov pil
+  - python setup.py build_ext --inplace
   - python setup.py build
 
 script:
