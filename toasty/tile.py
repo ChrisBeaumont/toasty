@@ -93,6 +93,7 @@ def gen_wtml(base_dir, depth, **kwargs):
 
     Optional Keywords
     -----------------
+    FolderName
     BandPass
     Name
     Credits
@@ -104,6 +105,7 @@ def gen_wtml(base_dir, depth, **kwargs):
     wtml : str
       A WTML record
     """
+    kwargs.setdefault('FolderName', 'Toasty')
     kwargs.setdefault('BandPass', 'Visible')
     kwargs.setdefault('Name', 'Toasty map')
     kwargs.setdefault('Credits', 'Toasty')
@@ -112,8 +114,9 @@ def gen_wtml(base_dir, depth, **kwargs):
     kwargs['url'] = base_dir
     kwargs['depth'] = depth
 
-    template = ('<Folder>\n<ImageSet Generic="False" DataSetType="Sky" '
-                'BandPass="Visible" Name="{Name}" '
+    template = ('<Folder Name="{FolderName}">\n'
+                '<ImageSet Generic="False" DataSetType="Sky" '
+                'BandPass="{BandPass}" Name="{Name}" '
                 'Url="{url}/{{1}}/{{3}}/{{3}}_{{2}}.png" BaseTileLevel="0" '
                 'TileLevels="{depth}" BaseDegreesPerTile="180" '
                 'FileType=".png" BottomsUp="False" Projection="Toast" '
@@ -151,7 +154,6 @@ def toast(data_sampler, depth, base_dir, wtml_file=None):
             outfile.write(wtml)
 
     for pth, tile in iter_tiles(data_sampler, depth):
-        print pth
         pth = os.path.join(base_dir, pth)
         direc, _ = os.path.split(pth)
         if not os.path.exists(direc):

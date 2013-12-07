@@ -5,7 +5,7 @@ toasty
 [![Build Status](https://travis-ci.org/ChrisBeaumont/toasty.png?branch=master)](https://travis-ci.org/ChrisBeaumont/toasty)
 
 
-Library to build WorldWide Telescope TOAST tiles
+Library to build WorldWide Telescope TOAST tiles.
 
 
 ### Dependencies
