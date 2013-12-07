@@ -1,0 +1,115 @@
+"""
+Set up a minimal HTTP Server to preview a Toasty-generated
+tile pyramid
+"""
+import os
+import sys
+from time import time
+from SimpleHTTPServer import SimpleHTTPRequestHandler, test
+from cStringIO import StringIO
+
+from . import gen_wtml
+
+
+class SimpleWWTHandler(SimpleHTTPRequestHandler):
+
+    @property
+    def wtml(self):
+        if not hasattr(self, '_wtml'):
+            base_dir = sys.argv[-1]
+            depths = os.walk(base_dir).next()[1]
+            max_depth = max(map(int, depths))
+            self._wtml = gen_wtml(base_dir, max_depth)
+        return self._wtml
+
+    def send_head(self):
+        if self.path == '/toasty.wtml':
+            self.send_response(200)
+            self.send_header("Content-type", 'text/xml')
+            self.send_header("Content-Length", str(len(self.wtml)))
+            self.send_header("Last-Modified",
+                             self.date_time_string(int(time())))
+            self.end_headers()
+            return StringIO(self.wtml)
+        if self.path in ['/', '/index.html']:
+            self.send_response(200)
+            self.send_header("Content-type", 'text/html')
+            self.send_header("Content-Length", str(len(html)))
+            self.send_header("Last-Modified",
+                             self.date_time_string(int(time())))
+            self.end_headers()
+            return StringIO(html)
+        return SimpleHTTPRequestHandler.send_head(self)
+
+
+html = """
+<html>
+<head>
+<title> Toasty Viewer </title>
+<style type="text/css">
+html, body {
+height: 100%;
+overflow: hidden;
+}
+
+body {
+padding: 0;
+margin: 0;
+}
+
+#canvas {
+padding: 0;
+margin: 0 0 0px 0;
+}
+
+div {margin: 0 0 0px 0; padding: 0;}
+
+</style>
+
+<script src="http://www.worldwidetelescope.org/scripts/wwtsdk.aspx"></script>
+</head>
+
+<body onload="init();" onresize="resize_canvas();" style="background-color:#000000">
+<script type="text/javascript">
+
+function init() {
+ wwt = wwtlib.WWTControl.initControl("WWTCanvas");
+ wwt.add_ready(wwtReady);
+ resize_canvas();
+}
+
+function resize_canvas() {
+    div = document.getElementById("WWTCanvas");
+
+    if (div.style.width != (window.innerWidth).toString() + "px") {
+        div.style.width = (window.innerWidth).toString() + "px";
+        }
+
+    if (div.style.height != (window.innerHeight).toString() + "px") {
+        div.style.height = ((window.innerHeight)).toString() + "px";
+        }
+}
+
+function wwtReady() {
+   wwt.settings.set_showCrosshairs(true);
+   wwt.settings.set_showConstellationFigures(false);
+   wwt.settings.set_showConstellationBoundries(false);
+   wwt.loadImageCollection('/toasty.wtml');
+   wwt.add_collectionLoaded(set_layers);
+}
+
+function set_layers() {
+   wwt.setBackgroundImageByName('Wise All Sky (Infrared)');
+   wwt.setForegroundImageByName('Toasty map');
+   wwt.setForegroundOpacity(50);
+}
+</script>
+
+<div id="WWTCanvas" style="width: 750px; height: 750px; border-style: none; border-width: 0px;">
+</div>
+</body>
+</html>
+"""
+
+if __name__ == "__main__":
+    test(HandlerClass=SimpleWWTHandler)
