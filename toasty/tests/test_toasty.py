@@ -2,11 +2,16 @@ from __future__ import print_function
 
 import os
 from xml.dom.minidom import parseString
+from tempfile import mkstemp, mkdtemp
+from shutil import rmtree
 
 import pytest
+from astropy.io import fits
 import numpy as np
+import healpy as hp
 
-from .. import iter_tiles, cartesian_sampler, gen_wtml
+from .. import tile
+from .. import iter_tiles, cartesian_sampler, gen_wtml, toast, healpix_sampler
 from ..io import read_png, save_png
 from ..util import mid
 
@@ -34,13 +39,15 @@ def test_mid():
     np.testing.assert_array_almost_equal(result, expected)
 
 
-def fail_image(expected, actual, err_msg):
-    from tempfile import mkstemp
+def image_test(expected, actual, err_msg):
+    resid = np.abs(1. * actual - expected)
+    if np.median(resid) < 15:
+        return
 
     _, pth = mkstemp(suffix='.png')
     save_png(pth, np.hstack((expected, actual)))
 
-    assert False, "%s. Saved to %s" % (err_msg, pth)
+    pytest.fail("%s. Saved to %s" % (err_msg, pth))
 
 
 def test_reference_wtml():
@@ -67,23 +74,75 @@ def test_reference_wtml():
         assert ref.getAttribute(k) == val.getAttribute(k)
 
 
+def cwd():
+    return os.path.split(os.path.abspath(__file__))[0]
 
 def test_wwt_compare_sky():
     """Assert that the toast tiling looks similar to the WWT tiles"""
-    direc = os.path.split(os.path.abspath(__file__))[0]
+    direc = cwd()
 
     im = read_png(os.path.join(direc, 'test.png'))
     im = np.flipud(im)
-
     sampler = cartesian_sampler(im)
 
     for pth, result in iter_tiles(sampler, depth=1):
         expected = read_png(os.path.join(direc, 'test_sky', pth))
         expected = expected[:, :, :3]
 
-        resid = np.abs(1. * result - expected)
-        if np.median(resid) > 15:
-            fail_image(expected, result, "Failed for %s" % pth)
+        image_test(expected, result, "Failed for %s" % pth)
+
+
+def test_healpix_sampler():
+
+    direc = cwd()
+
+    im = fits.open(os.path.join(direc, 'test.hpx'))[1].data['I']
+
+    sampler = healpix_sampler(im, nest=True)
+
+    for pth, result in iter_tiles(sampler, depth=1):
+        expected = read_png(os.path.join(direc, 'test_sky', pth))
+        expected = expected[:, :, 0]
+
+        image_test(expected, result, "Failed for %s" % pth)
+
+
+def test_guess_healpix():
+    pth = os.path.join(cwd(), 'test.hpx')
+    d, nest, coord = tile._guess_healpix(pth)
+    assert nest == True
+    assert coord == 'C'
+    np.testing.assert_array_equal(d, fits.open(pth)[1].data['I'])
+
+
+def test_toaster():
+    cwdir = cwd()
+
+    try:
+        base = mkdtemp()
+
+        im = read_png(os.path.join(cwdir, 'test.png'))
+        im = np.flipud(im)
+        sampler = cartesian_sampler(im)
+
+        wtml = os.path.join(base, 'test.wtml')
+
+        toast(sampler, 1, base, wtml_file=wtml)
+
+        for n, x, y in [(0, 0, 0), (1, 0, 0), (1, 0, 1),
+                        (1, 1, 0), (1, 1, 1)]:
+            subpth = os.path.join(str(n), str(y), "%i_%i.png" % (y, x))
+
+            a = read_png(os.path.join(base, subpth))[:, :, :3]
+            b = read_png(os.path.join(cwdir, 'test_sky', subpth))[:, :, :3]
+
+
+            image_test(b, a, 'Failed for %s' % subpth)
+
+        assert os.path.exists(wtml)
+    finally:
+        rmtree(base)
+
 
 reference_wtml = """
 <Folder Name="ADS All Sky Survey">
