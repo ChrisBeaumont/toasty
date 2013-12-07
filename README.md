@@ -9,7 +9,7 @@ Library to build WorldWide Telescope TOAST tiles.
 
 
 ### Dependencies
- * Required: numpy, cython, Pillow or PIL
+ * Required: python (2.6, 2.7, 3.2, or 3.3), numpy, cython, Pillow/PIL
  * Optional: astropy, healpy (for astronomy); pytest (for testing)
 
 ### Usage
@@ -48,3 +48,5 @@ This will start a web server, probably at [http://0.0.0.0:8000](http://0.0.0:800
 
 For more information about using WorldWide Telescope with custom image data,
 see [the official documentation](http://www.worldwidetelescope.org/Docs/worldwidetelescopedatafilesreference.html). The function `toasty.gen_wtml` can generate the wtml information for images generated with toasty.
+
+For an example of tiles generated with Toasty (originally from [Aladin healpix images](http://alasky.u-strasbg.fr/cats/SIMBAD/)), see [The ADS All Sky Survey](http://adsass.s3-website-us-west-2.amazonaws.com/). The code used to generate these images is [here](https://github.com/ChrisBeaumont/adsass/blob/master/toast/toast.py).
