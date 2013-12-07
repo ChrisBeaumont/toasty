@@ -9,7 +9,7 @@ Library to build WorldWide Telescope TOAST tiles
 
 
 ### Dependencies
- * Required: numpy, cython, PIL
+ * Required: numpy, cython, Pillow or PIL
  * Optional: astropy, healpy (for astronomy); pytest (for testing)
 
 ### Usage
