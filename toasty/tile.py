@@ -9,7 +9,7 @@ import numpy as np
 from ._libtoasty import subsample, mid
 from .io import save_png
 from .norm import normalize
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 level1 = [[np.radians(c) for c in row]
           for row in  [[(0, -90), (90, 0), (0, 90), (180, 0)],
@@ -18,7 +18,37 @@ level1 = [[np.radians(c) for c in row]
                        [(180, 0), (0, 90), (270, 0), (0, -90)]]
                        ]
 
-def _div4(n, x, y, c, increasing):
+Pos = namedtuple('Pos', 'n x y')
+Tile = namedtuple('Tile', 'pos increasing corners')
+
+def _postfix_corner(tile, depth, bottom_only):
+    """
+    Yield subtiles of a given tile, in postfix order
+
+
+    Parameters
+    ----------
+    tile : (Pos, corner, increasing)
+      Description of Current tile
+    depth : int
+      Depth to descend to
+    bottom_only : bool
+      If True, only yield tiles at max_depth
+    """
+    n = tile[0].n
+    if n > depth:
+        return
+
+    for child in _div4(*tile):
+        for item in _postfix_corner(child, depth, bottom_only):
+            yield item
+
+    if n == depth or not bottom_only:
+        yield tile
+
+
+def _div4(pos, c, increasing):
+    n, x, y = pos.n, pos.x, pos.y
     ul, ur, lr, ll = c
     to = mid(ul, ur)
     ri = mid(ur, lr)
@@ -26,26 +56,26 @@ def _div4(n, x, y, c, increasing):
     le = mid(ll, ul)
     ce = mid(ll, ur) if increasing else mid(ul, lr)
 
-    return [(n + 1, 2 * x, 2 * y, (ul, to, ce, le), increasing),
-            (n + 1, 2 * x + 1, 2 * y, (to, ur, ri, ce), increasing),
-            (n + 1, 2 * x, 2 * y + 1, (le, ce, bo, ll), increasing),
-            (n + 1, 2 * x + 1, 2 * y + 1, (ce, ri, lr, bo), increasing)]
+    return [(Pos(n=n + 1, x=2 * x, y=2 * y), (ul, to, ce, le), increasing),
+            (Pos(n=n + 1, x=2 * x + 1, y=2 * y), (to, ur, ri, ce), increasing),
+            (Pos(n=n + 1, x=2 * x, y=2 * y + 1), (le, ce, bo, ll), increasing),
+            (Pos(n=n + 1, x=2 * x + 1, y=2 * y + 1), (ce, ri, lr, bo),
+             increasing)]
 
 
-def _parent(n, x, y):
+def _parent(child):
     """
     Given a toast tile, return the address of the parent,
     as well as the corner of the parent that this tile occupies
 
     Returns
     -------
-    (n, x, y, xcorner, ycorner)
+    Pos, xcorner, ycorner
     """
-    xp = x / 2
-    yp = y / 2
-    left = x % 2
-    top = y % 2
-    return (n - 1, xp, yp, left, top)
+    parent = Pos(n=child.n - 1, x=child.x / 2, y=child.y / 2)
+    left = child.x % 2
+    top = child.y % 2
+    return (parent, left, top)
 
 
 def iter_corners(depth, bottom_only=True):
@@ -60,27 +90,19 @@ def iter_corners(depth, bottom_only=True):
 
     bottom_only : bool
       If True, then only the lowest tiles will be yielded
+
+    Yields
+    ------
+    pos, corner
     """
-    todo = [(1, 0, 0, level1[0], True),
-            (1, 1, 0, level1[1], False),
-            (1, 1, 1, level1[2], True),
-            (1, 0, 1, level1[3], False)]
+    todo = [(Pos(n=1, x=0, y=0), level1[0], True),
+            (Pos(n=1, x=1, y=0), level1[1], False),
+            (Pos(n=1, x=1, y=1), level1[2], True),
+            (Pos(n=1, x=0, y=1), level1[3], False)]
 
     for t in todo:
-        for item in _postfix_corner(t, 1, depth, bottom_only):
+        for item in _postfix_corner(t, depth, bottom_only):
             yield item
-
-
-def _postfix_corner(tile, depth, max_depth, bottom_only):
-    if depth > max_depth:
-        return
-
-    for child in _div4(*tile):
-        for item in _postfix_corner(child, depth + 1, max_depth, bottom_only):
-            yield item
-
-    if depth == max_depth or not bottom_only:
-        yield tile
 
 
 def iter_tiles(data_sampler, depth, merge=True):
@@ -116,24 +138,27 @@ def iter_tiles(data_sampler, depth, merge=True):
 
     parents = defaultdict(dict)
 
-    for n, x, y, c, increasing in iter_corners(max(depth, 1),
+    for node, c, increasing in iter_corners(max(depth, 1),
                                                bottom_only=merge):
 
         l, b = subsample(c[0], c[1], c[2], c[3], 256, increasing)
         img = data_sampler(l, b)
 
-        for pth, img in _trickle_up(img, n, x, y, parents, merge, depth):
+
+        for pth, img in _trickle_up(img, node, parents, merge, depth):
             yield pth, img
 
 
-def _trickle_up(im, n, x, y, parents, merge, depth):
+def _trickle_up(im, node, parents, merge, depth):
     """
     When a new toast tile is ready, propagate it up the hierarchy
     and recursively yield its completed parents
     """
+    n, x, y = node.n, node.x, node.y
+
     pth = os.path.join('%i' % n, '%i' % y, '%i_%i.png' % (y, x))
 
-    nparent = sum(len(v) for v in parents)
+    nparent = sum(len(v) for v in parents.values())
     assert nparent <= 4 * max(depth, 1)
 
     if depth >= n:  # handle special case of depth=0, n=1
@@ -146,15 +171,14 @@ def _trickle_up(im, n, x, y, parents, merge, depth):
     if not merge and n > 1:
         return
 
-    pn, px, py, xc, yc = _parent(n, x, y)
-    corners = parents[(pn, px, py)]
+    parent, xc, yc = _parent(node)
+    corners = parents[parent]
     corners[(xc, yc)] = im
 
     if len(corners) < 4:  # parent not yet ready
         return
 
-    parents.pop((pn, px, py))
-    n, x, y = pn, px, py
+    parents.pop(parent)
     ul = corners[(0, 0)]
     ur = corners[(1, 0)]
     bl = corners[(0, 1)]
@@ -162,7 +186,7 @@ def _trickle_up(im, n, x, y, parents, merge, depth):
     mosaic = np.vstack((np.hstack((ul, ur)), np.hstack((bl, br))))
     im = (merge or _default_merge)(mosaic)
 
-    for item in _trickle_up(im, n, x, y, parents, merge, depth):
+    for item in _trickle_up(im, parent, parents, merge, depth):
         yield item
 
 
