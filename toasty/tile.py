@@ -2,6 +2,8 @@
 Generate PNG tile directories
 """
 import os
+import logging
+
 import numpy as np
 
 from .util import subsample, mid
@@ -224,12 +226,21 @@ def toast(data_sampler, depth, base_dir, wtml_file=None, merge=True):
         with open(wtml_file, 'w') as outfile:
             outfile.write(wtml)
 
+    num = 0
     for pth, tile in iter_tiles(data_sampler, depth, merge):
+        num += 1
+        if num % 10 == 0:
+            logging.getLogger(__name__).info("Finished %i of %i tiles" %
+                                             (num, depth2tiles(depth)))
         pth = os.path.join(base_dir, pth)
         direc, _ = os.path.split(pth)
         if not os.path.exists(direc):
             os.makedirs(direc)
         save_png(pth, tile)
+
+
+def depth2tiles(depth):
+    return (4 ** (depth + 1) - 1) / 3
 
 
 def _find_extension(pth):
