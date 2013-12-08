@@ -122,6 +122,23 @@ def test_guess_healpix():
     np.testing.assert_array_equal(d, fits.open(pth)[1].data['I'])
 
 
+def test_merge():
+    # test that merge function called on non-terminal nodes
+    im = read_png(os.path.join(cwd(), 'test.png'))
+
+    def null_merge(mosaic):
+        return np.zeros((256, 256, 3), dtype=np.uint8)
+
+    sampler = cartesian_sampler(im)
+
+    for pth, im in iter_tiles(sampler, 2, null_merge):
+        if pth[0] != '2':
+            assert im.max() == 0
+        else:
+            assert im.max() != 0
+
+
+
 class TestToaster(object):
     def setup_method(self, method):
         self.base = mkdtemp()

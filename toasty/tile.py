@@ -47,6 +47,42 @@ def _parent(n, x, y):
     top = y % 2
     return (n - 1, xp, yp, left, top)
 
+
+def iter_corners(depth, bottom_only=True):
+    """
+    Iterate over toast tiles and return the corners.
+    Tiles are traversed in post-order (children before parent)
+
+    Parameters
+    ----------
+    depth : int
+      The tile depth to recurse to
+
+    bottom_only : bool
+      If True, then only the lowest tiles will be yielded
+    """
+    todo = [(1, 0, 0, level1[0], True),
+            (1, 1, 0, level1[1], False),
+            (1, 1, 1, level1[2], True),
+            (1, 0, 1, level1[3], False)]
+
+    for t in todo:
+        for item in _postfix_corner(t, 1, depth, bottom_only):
+            yield item
+
+
+def _postfix_corner(tile, depth, max_depth, bottom_only):
+    if depth > max_depth:
+        return
+
+    for child in _div4(*tile):
+        for item in _postfix_corner(child, depth + 1, max_depth, bottom_only):
+            yield item
+
+    if depth == max_depth or not bottom_only:
+        yield tile
+
+
 def iter_tiles(data_sampler, depth, merge=True):
     """
     Create a hierarchy of toast tiles
@@ -65,7 +101,7 @@ def iter_tiles(data_sampler, depth, merge=True):
     merge : bool or callable (default True)
       How to treat lower resolution tiles.
       - If True, tiles above the lowest level (highest resolution)
-      will be computed by averaging and downsampling the 4 subtiles.
+        will be computed by averaging and downsampling the 4 subtiles.
       - If False, sampler will be called explicitly for all tiles
       - If a callable object, this object will be passed the
         4x oversampled image to downsample
@@ -78,20 +114,10 @@ def iter_tiles(data_sampler, depth, merge=True):
     if merge == True:
         merge = _default_merge
 
-    todo = [(1, 0, 0, level1[0], True),
-            (1, 1, 0, level1[1], False),
-            (1, 1, 1, level1[2], True),
-            (1, 0, 1, level1[3], False)]
-
     parents = defaultdict(dict)
 
-    while len(todo):
-        n, x, y, c, increasing = todo.pop()
-
-        if n < depth:
-            todo .extend(_div4(n, x, y, c, increasing))
-            if merge:
-                continue
+    for n, x, y, c, increasing in iter_corners(max(depth, 1),
+                                               bottom_only=merge):
 
         l, b = subsample(c[0], c[1], c[2], c[3], 256, increasing)
         img = data_sampler(l, b)
@@ -106,6 +132,9 @@ def _trickle_up(im, n, x, y, parents, merge, depth):
     and recursively yield its completed parents
     """
     pth = os.path.join('%i' % n, '%i' % y, '%i_%i.png' % (y, x))
+
+    nparent = sum(len(v) for v in parents)
+    assert nparent <= 4 * max(depth, 1)
 
     if depth >= n:  # handle special case of depth=0, n=1
         yield pth, im
