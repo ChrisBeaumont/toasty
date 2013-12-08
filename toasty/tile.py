@@ -7,6 +7,7 @@ import numpy as np
 from .util import subsample, mid
 from .io import save_png
 from .norm import normalize
+from collections import defaultdict
 
 level1 = [[np.radians(c) for c in row]
           for row in  [[(0, -90), (90, 0), (0, 90), (180, 0)],
@@ -29,7 +30,22 @@ def _div4(n, x, y, c, increasing):
             (n + 1, 2 * x + 1, 2 * y + 1, (ce, ri, lr, bo), increasing)]
 
 
-def iter_tiles(data_sampler, depth):
+def _parent(n, x, y):
+    """
+    Given a toast tile, return the address of the parent,
+    as well as the corner of the parent that this tile occupies
+
+    Returns
+    -------
+    (n, x, y, xcorner, ycorner)
+    """
+    xp = x / 2
+    yp = y / 2
+    left = x % 2
+    top = y % 2
+    return (n - 1, xp, yp, left, top)
+
+def iter_tiles(data_sampler, depth, merge=True):
     """
     Create a hierarchy of toast tiles
 
@@ -44,39 +60,87 @@ def iter_tiles(data_sampler, depth):
       The maximum depth to tile to. A depth of N creates
       4^N pngs at the deepest level
 
+    merge : bool or callable (default True)
+      How to treat lower resolution tiles.
+      - If True, tiles above the lowest level (highest resolution)
+      will be computed by averaging and downsampling the 4 subtiles.
+      - If False, sampler will be called explicitly for all tiles
+      - If a callable object, this object will be passed the
+        4x oversampled image to downsample
+
     Yields
     ------
     (pth, tile) : str, ndarray
       pth is the relative path where the tile image should be saved
     """
+    if merge == True:
+        merge = _default_merge
+
     todo = [(1, 0, 0, level1[0], True),
             (1, 1, 0, level1[1], False),
             (1, 1, 1, level1[2], True),
             (1, 0, 1, level1[3], False)]
-    lev1 = {}
+
+    parents = defaultdict(dict)
 
     while len(todo):
         n, x, y, c, increasing = todo.pop()
 
-        pth = os.path.join('%i' % n, '%i' % y, '%i_%i.png' % (y, x))
+        if n < depth:
+            todo .extend(_div4(n, x, y, c, increasing))
+            if merge:
+                continue
 
         l, b = subsample(c[0], c[1], c[2], c[3], 256, increasing)
         img = data_sampler(l, b)
-        if n == 1:
-            lev1[(x, y)] = img
 
-        if depth != 0:
+        for pth, img in _trickle_up(img, n, x, y, parents, merge, depth):
             yield pth, img
 
-        if n < depth:
-            todo .extend(_div4(n, x, y, c, increasing))
 
-    # level 0 tile plays by special rules
-    n0 = np.vstack((np.hstack((lev1[(0, 0)], lev1[(1, 0)])),
-                    np.hstack((lev1[(0, 1)], lev1[(1, 1)]))))
-    n0 = n0[::2, ::2]
-    pth = os.path.join('0', '0', '0_0.png')
-    yield pth, n0
+def _trickle_up(im, n, x, y, parents, merge, depth):
+    """
+    When a new toast tile is ready, propagate it up the hierarchy
+    and recursively yield its completed parents
+    """
+    pth = os.path.join('%i' % n, '%i' % y, '%i_%i.png' % (y, x))
+
+    if depth >= n:  # handle special case of depth=0, n=1
+        yield pth, im
+
+    if n == 0:
+        return
+
+    # - If not merging and not at level 1, no need to accumulate
+    if not merge and n > 1:
+        return
+
+    pn, px, py, xc, yc = _parent(n, x, y)
+    corners = parents[(pn, px, py)]
+    corners[(xc, yc)] = im
+
+    if len(corners) < 4:  # parent not yet ready
+        return
+
+    parents.pop((pn, px, py))
+    n, x, y = pn, px, py
+    ul = corners[(0, 0)]
+    ur = corners[(1, 0)]
+    bl = corners[(0, 1)]
+    br = corners[(1, 1)]
+    mosaic = np.vstack((np.hstack((ul, ur)), np.hstack((bl, br))))
+    im = (merge or _default_merge)(mosaic)
+
+    for item in _trickle_up(im, n, x, y, parents, merge, depth):
+        yield item
+
+
+def _default_merge(mosaic):
+    """The default merge strategy -- just average all 4 pixels"""
+    return (mosaic[::2, ::2] / 4. +
+            mosaic[1::2, ::2] / 4. +
+            mosaic[::2, 1::2] / 4. +
+            mosaic[1::2, 1::2] / 4.).astype(mosaic.dtype)
 
 
 def gen_wtml(base_dir, depth, **kwargs):
@@ -130,7 +194,7 @@ def gen_wtml(base_dir, depth, **kwargs):
     return template.format(**kwargs)
 
 
-def toast(data_sampler, depth, base_dir, wtml_file=None):
+def toast(data_sampler, depth, base_dir, wtml_file=None, merge=True):
     """
     Build a directory of toast tiles
 
@@ -147,13 +211,20 @@ def toast(data_sampler, depth, base_dir, wtml_file=None):
     wtml_file : str (optional)
       The path to write a WTML file to. If not present,
       no file will be written
+    merge : bool or callable (default True)
+      How to treat lower resolution tiles.
+      - If True, tiles above the lowest level (highest resolution)
+      will be computed by averaging and downsampling the 4 subtiles.
+      - If False, sampler will be called explicitly for all tiles
+      - If a callable object, this object will be passed the
+        4x oversampled image to downsample
     """
     if wtml_file is not None:
         wtml = gen_wtml(base_dir, depth)
         with open(wtml_file, 'w') as outfile:
             outfile.write(wtml)
 
-    for pth, tile in iter_tiles(data_sampler, depth):
+    for pth, tile in iter_tiles(data_sampler, depth, merge):
         pth = os.path.join(base_dir, pth)
         direc, _ = os.path.split(pth)
         if not os.path.exists(direc):

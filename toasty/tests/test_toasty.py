@@ -20,8 +20,9 @@ from .. import iter_tiles, cartesian_sampler, gen_wtml, toast, healpix_sampler
 from ..io import read_png, save_png
 from ..util import mid
 
+
 def mock_sampler(x, y):
-    pass
+    return x
 
 
 @pytest.mark.parametrize('depth', (0, 1, 2))
@@ -122,33 +123,40 @@ def test_guess_healpix():
     np.testing.assert_array_equal(d, fits.open(pth)[1].data['I'])
 
 
-def test_toaster():
-    cwdir = cwd()
+class TestToaster(object):
+    def setup_method(self, method):
+        self.base = mkdtemp()
+        self.cwd = cwd()
 
-    try:
-        base = mkdtemp()
-
-        im = read_png(os.path.join(cwdir, 'test.png'))
+        im = read_png(os.path.join(self.cwd, 'test.png'))
         im = np.flipud(im)
-        sampler = cartesian_sampler(im)
+        self.sampler = cartesian_sampler(im)
 
-        wtml = os.path.join(base, 'test.wtml')
+    def teardown_method(self, method):
+        rmtree(self.base)
 
-        toast(sampler, 1, base, wtml_file=wtml)
-
+    def verify_toast(self):
+        """ Zip the expected and actual tiles """
         for n, x, y in [(0, 0, 0), (1, 0, 0), (1, 0, 1),
                         (1, 1, 0), (1, 1, 1)]:
             subpth = os.path.join(str(n), str(y), "%i_%i.png" % (y, x))
-
-            a = read_png(os.path.join(base, subpth))[:, :, :3]
-            b = read_png(os.path.join(cwdir, 'test_sky', subpth))[:, :, :3]
-
-
+            a = read_png(os.path.join(self.base, subpth))[:, :, :3]
+            b = read_png(os.path.join(self.cwd, 'test_sky', subpth))[:, :, :3]
             image_test(b, a, 'Failed for %s' % subpth)
 
+    def test_default(self):
+
+        wtml = os.path.join(self.base, 'test.wtml')
+        toast(self.sampler, 1, self.base, wtml_file=wtml)
+
         assert os.path.exists(wtml)
-    finally:
-        rmtree(base)
+        self.verify_toast()
+
+    def test_no_merge(self):
+        toast(self.sampler, 1, self.base, merge=False)
+        self.verify_toast()
+
+
 
 
 reference_wtml = """
