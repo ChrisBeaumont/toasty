@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 from Cython.Distutils import build_ext
 import numpy as np
 
-ext_modules = [Extension("toasty.util", ["toasty/util.pyx"])]
+ext_modules = [Extension("toasty._libtoasty", ["toasty/_libtoasty.pyx"])]
 setup(
         name = "toasty",
         version='0.0.1',

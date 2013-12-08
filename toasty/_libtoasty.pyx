@@ -1,6 +1,6 @@
 from libc.math cimport sin, cos, atan2, hypot
-
 import numpy as np
+
 cimport cython
 
 cimport numpy as np
@@ -12,7 +12,7 @@ cdef struct Point:
     DTYPE_t x
     DTYPE_t y
 
-cdef _mid(Point a, Point b, Point *cen):
+cdef void _mid(Point a, Point b, Point *cen):
     """
     Return the midpoint of two points on a great circle arc
 
@@ -40,10 +40,10 @@ def mid(a, b):
 
 
 @cython.boundscheck(False)
-cdef _subsample(Point ul, Point ur, Point lr, Point ll,
-                np.ndarray[DTYPE_t, ndim=2] x,
-                np.ndarray[DTYPE_t, ndim=2] y,
-                int increasing):
+cdef void _subsample(Point ul, Point ur, Point lr, Point ll,
+                    DTYPE_t [:, :] x,
+                    DTYPE_t [:, :] y,
+                    int increasing):
     """
     Given the corners of a toast tile, return the
     sky locations of a subsampled version
@@ -53,16 +53,18 @@ cdef _subsample(Point ul, Point ur, Point lr, Point ll,
     ul, ur, lr, ll: Points
         The (lon, lat) coordinates of the four corners of the toast
         tile to subdivide. In radians
-    x, y : ndarray
+    x, y : arrays
         The arrays in which to hold the subdivided locations
     increasing : int
          If 1, the shared edge of the toast tile's two sub-HTM
          trixels increases from left to right. Otherwise, it
          decreases from left to right
+    n : int
+        The number of pixels in x and y
     """
-
     cdef Point le, up, lo, ri, cen
     cdef int n = x.shape[0]
+    cdef int n2 = n / 2
 
     _mid(ul, ur, &up)
     _mid(ul, ll, &le)
@@ -75,14 +77,14 @@ cdef _subsample(Point ul, Point ur, Point lr, Point ll,
         _mid(ul, lr, &cen)
 
     if n == 1:
-        x[...] = cen.x
-        y[...] = cen.y
+        x[0] = cen.x
+        y[0] = cen.y
         return
 
-    _subsample(ul, up, cen, le, x[:n/2, :n/2], y[:n/2, :n/2], increasing)
-    _subsample(up, ur, ri, cen, x[:n/2, n/2:], y[:n/2, n/2:], increasing)
-    _subsample(le, cen, lo, ll, x[n/2:, :n/2], y[n/2:, :n/2], increasing)
-    _subsample(cen, ri, lr, lo, x[n/2:, n/2:], y[n/2:, n/2:], increasing)
+    _subsample(ul, up, cen, le, x[:n2, :n2], y[:n2, :n2], increasing)
+    _subsample(up, ur, ri, cen, x[:n2, n2:], y[:n2, n2:], increasing)
+    _subsample(le, cen, lo, ll, x[n2:, :n2], y[n2:, :n2], increasing)
+    _subsample(cen, ri, lr, lo, x[n2:, n2:], y[n2:, n2:], increasing)
 
 
 def subsample(ul, ur, lr, ll, npix, increasing):

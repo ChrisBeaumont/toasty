@@ -6,7 +6,7 @@ import logging
 
 import numpy as np
 
-from .util import subsample, mid
+from ._libtoasty import subsample, mid
 from .io import save_png
 from .norm import normalize
 from collections import defaultdict

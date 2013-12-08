@@ -18,7 +18,7 @@ except ImportError:
 from .. import tile
 from .. import iter_tiles, cartesian_sampler, gen_wtml, toast, healpix_sampler
 from ..io import read_png, save_png
-from ..util import mid
+from .._libtoasty import mid
 
 
 def mock_sampler(x, y):
