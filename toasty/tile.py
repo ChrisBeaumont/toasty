@@ -333,7 +333,7 @@ def cartesian_sampler(data):
         raise ValueError("Map must be twice as wide as it is tall")
 
     def vec2pix(l, b):
-        l = l % (2 * np.pi)
+        l = (l + np.pi) % (2 * np.pi)
         l[l < 0] += 2 * np.pi
         l = nx * (1 - l / (2 * np.pi))
         l = np.clip(l.astype(np.int), 0, nx - 1)

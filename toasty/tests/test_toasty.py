@@ -88,7 +88,6 @@ def test_wwt_compare_sky():
     direc = cwd()
 
     im = read_png(os.path.join(direc, 'test.png'))
-    im = np.flipud(im)
     sampler = cartesian_sampler(im)
 
     for pth, result in iter_tiles(sampler, depth=1):
@@ -129,7 +128,6 @@ class TestToaster(object):
         self.cwd = cwd()
 
         im = read_png(os.path.join(self.cwd, 'test.png'))
-        im = np.flipud(im)
         self.sampler = cartesian_sampler(im)
 
     def teardown_method(self, method):
