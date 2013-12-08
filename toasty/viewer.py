@@ -74,11 +74,18 @@ padding: 0;
 margin: 0 0 0px 0;
 }
 
+#UI {
+position: relative;
+top: -40px;
+left: 20px;
+}
+
 div {margin: 0 0 0px 0; padding: 0;}
 
 </style>
 
 <script src="http://www.worldwidetelescope.org/scripts/wwtsdk.aspx"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 </head>
 
 <body onload="init();" onresize="resize_canvas();" style="background-color:#000000">
@@ -108,6 +115,12 @@ function wwtReady() {
    wwt.settings.set_showConstellationBoundries(false);
    wwt.loadImageCollection('/toasty.wtml');
    wwt.add_collectionLoaded(set_layers);
+   $('#select-foreground').change(function(e){
+      wwt.setBackgroundImageByName(this.value)
+      });
+   $('#opacity').change(function(e){
+      wwt.setForegroundOpacity(this.value);
+      });
 }
 
 function set_layers() {
@@ -118,6 +131,19 @@ function set_layers() {
 </script>
 
 <div id="WWTCanvas" style="width: 750px; height: 750px; border-style: none; border-width: 0px;">
+</div>
+<div id="UI">
+
+<select id="select-foreground">
+<option value="Digitized Sky Survey (Color)"> Optical </option>
+<option value="WMAP ILC 5-Year Cosmic Microwave Background"> WMAP 5-Year </option>
+<option value="SFD Dust Map (Infrared)"> SFD </option>
+<option value="IRIS: Improved Reprocessing of IRAS Survey (Infrared)"> IRIS </option>
+<option value="Hydrogen Alpha Full Sky Map"> H-alpha </option>
+</select>
+
+<input id='opacity' type="range" name="opacity" min="10" max="100">
+
 </div>
 </body>
 </html>
