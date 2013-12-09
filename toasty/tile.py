@@ -1,6 +1,7 @@
 """
 Generate PNG tile directories
 """
+from __future__ import print_function, division
 import os
 import logging
 
@@ -72,7 +73,7 @@ def _parent(child):
     -------
     Pos, xcorner, ycorner
     """
-    parent = Pos(n=child.n - 1, x=child.x / 2, y=child.y / 2)
+    parent = Pos(n=child.n - 1, x=child.x // 2, y=child.y // 2)
     left = child.x % 2
     top = child.y % 2
     return (parent, left, top)
@@ -154,6 +155,7 @@ def _trickle_up(im, node, parents, merge, depth):
     When a new toast tile is ready, propagate it up the hierarchy
     and recursively yield its completed parents
     """
+
     n, x, y = node.n, node.x, node.y
 
     pth = os.path.join('%i' % n, '%i' % y, '%i_%i.png' % (y, x))
@@ -293,7 +295,7 @@ def toast(data_sampler, depth, base_dir, wtml_file=None, merge=True):
 
 
 def depth2tiles(depth):
-    return (4 ** (depth + 1) - 1) / 3
+    return (4 ** (depth + 1) - 1) // 3
 
 
 def _find_extension(pth):
