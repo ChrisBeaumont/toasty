@@ -33,7 +33,7 @@ Toasty provides a few basic sampler functions:
   * **cartesian_sampler** for sampling from cartesian-projections
   * **normalizer** for applying an intensity normalization after sampling
 
-See ``toasty.tile`` for documentation on these functions
+See ``toasty.tile`` for documentation on these functions.
 
 
 ### Using with WorldWide Telescope
@@ -41,7 +41,7 @@ To quickly preview a toast directory named `test`, navigate to the directory
 where `test` exists and run
 
 ```
-python -m toasty.view test
+python -m toasty.viewer test
 ```
 
 This will start a web server, probably at [http://0.0.0.0:8000](http://0.0.0:8000) (check the output for the actual address). Open this URL in a browser to get a quick look at the data.
