@@ -14,7 +14,7 @@ before_install:
   - sudo ln -s /run/shm /dev/shm
 
 install:
-  - conda install --yes pip numpy cython astropy setuptools pillow
+  - conda install --yes pip numpy=1.8 cython astropy setuptools
   - pip install --use-mirrors pytest coveralls pytest-cov pyfits
   - pip install --upgrade pillow
   - (pip install --use-mirrors healpy && python -c "import healpy") || echo "could not install healpy"
