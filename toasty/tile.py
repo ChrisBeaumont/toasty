@@ -13,14 +13,15 @@ from .norm import normalize
 from collections import defaultdict, namedtuple
 
 level1 = [[np.radians(c) for c in row]
-          for row in  [[(0, -90), (90, 0), (0, 90), (180, 0)],
-                       [(90, 0), (0, -90), (0, 0), (0, 90)],
-                       [(0, 90), (0, 0), (0, -90), (270, 0)],
-                       [(180, 0), (0, 90), (270, 0), (0, -90)]]
-                       ]
+          for row in [[(0, -90), (90, 0), (0, 90), (180, 0)],
+                      [(90, 0), (0, -90), (0, 0), (0, 90)],
+                      [(0, 90), (0, 0), (0, -90), (270, 0)],
+                      [(180, 0), (0, 90), (270, 0), (0, -90)]]
+          ]
 
 Pos = namedtuple('Pos', 'n x y')
 Tile = namedtuple('Tile', 'pos increasing corners')
+
 
 def _postfix_corner(tile, depth, bottom_only):
     """
@@ -134,17 +135,16 @@ def iter_tiles(data_sampler, depth, merge=True):
     (pth, tile) : str, ndarray
       pth is the relative path where the tile image should be saved
     """
-    if merge == True:
+    if merge is True:
         merge = _default_merge
 
     parents = defaultdict(dict)
 
     for node, c, increasing in iter_corners(max(depth, 1),
-                                               bottom_only=merge):
+                                            bottom_only=merge):
 
         l, b = subsample(c[0], c[1], c[2], c[3], 256, increasing)
         img = data_sampler(l, b)
-
 
         for pth, img in _trickle_up(img, node, parents, merge, depth):
             yield pth, img
@@ -330,7 +330,7 @@ def _guess_healpix(pth, extension=None):
     return data, nest, coord
 
 
-def healpix_sampler(data, nest=False, coord = 'C', interpolation='nearest'):
+def healpix_sampler(data, nest=False, coord='C', interpolation='nearest'):
     """
     Build a sampler for Healpix images
 
@@ -354,6 +354,8 @@ def healpix_sampler(data, nest=False, coord = 'C', interpolation='nearest'):
     of (lon, lat)
     """
     from healpy import ang2pix, get_interp_val, npix2nside
+    from astropy.coordinates import Galactic, FK5
+    import astropy.units as u
 
     interp_opts = ['nearest', 'bilinear']
     if interpolation not in interp_opts:
@@ -362,14 +364,16 @@ def healpix_sampler(data, nest=False, coord = 'C', interpolation='nearest'):
     if coord.upper() not in 'CG':
         raise ValueError("Invalid coord %s. Must be 'C' or 'G'" % coord)
 
-    #XXX Add support for G
-    if coord.upper() == 'G':
-        raise NotImplementedError("coord='G' not yet supported")
-
+    galactic = coord.upper() == 'G'
     interp = interpolation == 'bilinear'
     nside = npix2nside(data.size)
 
     def vec2pix(l, b):
+        if galactic:
+            f = FK5(l, b, unit=(u.rad, u.rad))
+            g = f.transform_to(Galactic)
+            l, b = g.l.rad, g.b.rad
+
         theta = np.pi / 2 - b
         phi = l
 
@@ -403,7 +407,7 @@ def cartesian_sampler(data):
         l[l < 0] += 2 * np.pi
         l = nx * (1 - l / (2 * np.pi))
         l = np.clip(l.astype(np.int), 0, nx - 1)
-        b = ny * (1 - (b + np.pi/2) / np.pi)
+        b = ny * (1 - (b + np.pi / 2) / np.pi)
         b = np.clip(b.astype(np.int), 0, ny - 1)
         return data[b, l]
 

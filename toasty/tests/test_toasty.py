@@ -29,7 +29,7 @@ def mock_sampler(x, y):
 def test_iter_tiles_path(depth):
     result = set(r[0] for r in iter_tiles(mock_sampler, depth))
     expected = set(['{n}/{y}/{y}_{x}.png'.format(n=n, x=x, y=y)
-                    for n in range(depth+1)
+                    for n in range(depth + 1)
                     for y in range(2 ** n)
                     for x in range(2 ** n)])
     assert result == expected
@@ -68,11 +68,11 @@ def test_reference_wtml():
     val = parseString(wtml)
 
     assert ref.getElementsByTagName('Folder')[0].getAttribute('Name') == \
-      val.getElementsByTagName('Folder')[0].getAttribute('Name')
+        val.getElementsByTagName('Folder')[0].getAttribute('Name')
 
     for n in ['Credits', 'CreditsUrl', 'ThumbnailUrl']:
         assert ref.getElementsByTagName(n)[0].childNodes[0].nodeValue == \
-          val.getElementsByTagName(n)[0].childNodes[0].nodeValue
+            val.getElementsByTagName(n)[0].childNodes[0].nodeValue
 
     ref = ref.getElementsByTagName('ImageSet')[0]
     val = val.getElementsByTagName('ImageSet')[0]
@@ -82,6 +82,7 @@ def test_reference_wtml():
 
 def cwd():
     return os.path.split(os.path.abspath(__file__))[0]
+
 
 def test_wwt_compare_sky():
     """Assert that the toast tiling looks similar to the WWT tiles"""
@@ -114,10 +115,26 @@ def test_healpix_sampler():
 
 
 @pytest.mark.skipif('not HAS_ASTRO')
+def test_healpix_sampler_galactic():
+
+    direc = cwd()
+
+    im = fits.open(os.path.join(direc, 'test_gal.hpx'))[1].data['I']
+
+    sampler = healpix_sampler(im, nest=True, coord='G')
+
+    for pth, result in iter_tiles(sampler, depth=1):
+        expected = read_png(os.path.join(direc, 'test_sky', pth))
+        expected = expected[:, :, 0]
+
+        image_test(expected, result, "Failed for %s" % pth)
+
+
+@pytest.mark.skipif('not HAS_ASTRO')
 def test_guess_healpix():
     pth = os.path.join(cwd(), 'test.hpx')
     d, nest, coord = tile._guess_healpix(pth)
-    assert nest == True
+    assert nest is True
     assert coord == 'C'
     np.testing.assert_array_equal(d, fits.open(pth)[1].data['I'])
 
@@ -138,8 +155,8 @@ def test_merge():
             assert im.max() != 0
 
 
-
 class TestToaster(object):
+
     def setup_method(self, method):
         self.base = mkdtemp()
         self.cwd = cwd()
@@ -170,8 +187,6 @@ class TestToaster(object):
     def test_no_merge(self):
         toast(self.sampler, 1, self.base, merge=False)
         self.verify_toast()
-
-
 
 
 reference_wtml = """

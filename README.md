@@ -76,7 +76,7 @@ data = fits.open('allsky.fits')[0].data
 def sampler(x, y):
     """
     x and y are arrays, giving the RA/Dec centers
-    for each pixel to extract
+    (in radians) for each pixel to extract
     """
     ... code to extract a tile from `data` here ...
 
